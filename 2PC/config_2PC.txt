@@ -1,0 +1,12 @@
+7
+1 bool vote_yes N
+1 bool vote_no N
+1 bool alive N
+1 bool go_commit N
+1 bool go_abort N
+1 bool decide_commit N
+1 bool decide_abort N
+
+0
+
+0

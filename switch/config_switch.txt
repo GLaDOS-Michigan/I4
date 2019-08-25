@@ -1,0 +1,11 @@
+6
+3 bool pending P N N
+1 N src P
+1 N dst P
+2 bool link N N
+2 bool route_dom N N
+3 bool route_tc N N N
+
+0
+
+0

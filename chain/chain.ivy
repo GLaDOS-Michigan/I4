@@ -1,0 +1,194 @@
+#lang ivy1.7
+
+################################################################################
+#
+# A module for axiomatizing a total order
+#
+################################################################################
+module total_order(r) = {
+    axiom r(X,X)                        # Reflexivity
+    axiom r(X, Y) & r(Y, Z) -> r(X, Z)  # Transitivity
+    axiom r(X, Y) & r(Y, X) -> X = Y    # Anti-symmetry
+    axiom r(X, Y) | r(Y, X)             # Totality
+}
+
+################################################################################
+#
+# Modules for lone and injective relations
+#
+################################################################################
+module lone(f) = {
+    axiom (f(X, Y1) & f(X, Y2)) -> Y1 = Y2
+}
+module injective(f) = {
+    axiom (f(X1, Y) & f(X2, Y)) -> X1 = X2
+}
+
+################################################################################
+#
+# Types, relations and functions describing state of the system
+#
+################################################################################
+
+type transaction
+type node
+type key
+type operation
+
+# a total order on the transaction timestamps
+relation le(X:transaction, Y:transaction)  # le(X,Y) means X is before Y
+instantiate total_order(le)
+
+# transaction zero is a special transaction, before every transaction,
+# and it reads and writes to all keys
+individual zero:transaction
+axiom [here] le(zero, X)
+
+# Each operation reads and writes one key
+relation op_reads_key(Op: operation, K: key) # OP reads k
+#instantiate lone(op_reads_key)
+axiom (op_reads_key(X, Y1) & op_reads_key(X, Y2)) -> Y1 = Y2
+
+relation op_writes_key(Op : operation, K: key) # OP writes k
+#instantiate lone(op_writes_key)
+axiom (op_writes_key(X, Y1) & op_writes_key(X, Y2)) -> Y1 = Y2
+
+# Do not read and write the same key.
+axiom op_reads_key(Op, K1) & op_writes_key(Op, K2) -> K1 ~= K2
+
+# The operation in each node
+relation op_node(Op: operation, N : node) # The node on which an operation is applied
+#instantiate lone(op_node)
+axiom (op_node(X, Y1) & op_node(X, Y2)) -> Y1 = Y2
+
+relation node_for_key(K: key,  N : node) # Key is at node n
+#instantiate lone(node_for_key)
+axiom (node_for_key(X, Y1) & node_for_key(X, Y2)) -> Y1 = Y2
+axiom op_reads_key(Op, K) & node_for_key(K, N1)  & op_node(Op, N2) -> N1 = N2  #Operations must be local
+axiom op_writes_key(Op, K) & node_for_key(K, N1) &  op_node(Op, N2) -> N1 = N2 #Operations must be local
+
+# The relation between operations and transactions and an order on operations
+
+relation op_in_tx(Tx : transaction, Op: operation) # An operation of transaction is op
+
+# Each op is in a single Tx.
+instantiate injective(op_in_tx)
+
+relation oporder(X:operation, Y:operation)
+axiom oporder(X, X) # Reflexive
+axiom oporder(X, Y) & oporder(Y, Z) -> oporder(X, Z) # Transitive
+axiom oporder(X, Y) & oporder(Y, X) -> X = Y # Anti-symmetric
+axiom (op_in_tx(T, X) & op_in_tx(T, Y)) -> (oporder(X, Y) | oporder(Y, X)) # total for operations in the same transaction
+axiom (op_in_tx(T, X) & (oporder(X, Y) | oporder(Y, X))) -> op_in_tx(T, Y) # op_in_tx is closed under the order
+
+# different operations in the same transaction are in different nodes
+axiom op_in_tx(T, O1) & op_in_tx(T, O2) & O1 ~= O2 & op_node(O1, N1) & op_node(O2, N2) -> N1 ~= N2
+
+relation precommit_tx(Tx : transaction, N: node) # Is transaction tx precommitted at n
+relation abort_tx(Tx : transaction)
+relation commit_tx(Tx: transaction) # Is tx committed
+relation depends_tx(Tx: transaction, K: key, Tr : transaction) #Flow values between commited transactions
+
+relation read_tx(Tx: transaction, K: key)
+relation write_tx(Tx: transaction, K: key)
+
+after init {
+    precommit_tx(T, N) := T = zero;
+    abort_tx(T) := false;
+    commit_tx(T) := T = zero;
+    depends_tx(T1, K, T2) := (T1 = zero & T2 = zero);
+    read_tx(Tx, K) := Tx = zero;
+    write_tx(Tx, K) := Tx = zero;
+}
+
+action do_abort(tx: transaction, op: operation, n: node, kw: key, kr: key, luwkw: transaction, lurkw: transaction, luwkr: transaction, lcwkr: transaction) = {
+    require op_in_tx(tx, op); # Grab an operation
+    require ~abort_tx(tx) & ~commit_tx(tx); # Ensures that the transaction is not already aborted or committed
+
+    require (oporder(X, op) & X ~= op & op_node(X, N)) -> precommit_tx(tx, N);
+                   # Ensures that the previous operation was successfully precommitted
+    require op_node(op, n) ; # Assume operation is in node n
+    require ~precommit_tx(tx, n);
+    require ~op_writes_key(op, K) | op_writes_key(op, kw);
+    require op_writes_key(op, kw) -> node_for_key(kw, n);
+
+    require ~op_reads_key(op, K) | op_reads_key(op, kr);
+    require op_reads_key(op, kr) -> node_for_key(kr, n);
+
+#    instantiate get_last_write(kw, luwkw); # Write fails because of any future read or write.
+#    instantiate get_last_read (kw, lurkw);
+    require write_tx(luwkw, kw) & (~abort_tx(luwkw)) & (write_tx(T, kw) -> (le(T, luwkw) | abort_tx(T)));
+    require exists HT. depends_tx(lurkw, kw, HT) & (~abort_tx(lurkw)) & (read_tx(T, kw) -> le(T, lurkw) | abort_tx(T));
+
+#    instantiate get_previous_write(kr, luwkr, tx); # Read fails because of uncommited previous reads or writes
+#    instantiate get_previous_committed_write(kr, lcwkr, tx);
+    require write_tx(luwkr, kr) & le(luwkr, tx) & (~abort_tx(luwkr)) & (write_tx(T, kr) -> (le(T, luwkr) | le(tx, T) | abort_tx(T)));
+    require commit_tx(lcwkr) & write_tx(lcwkr, kr) & le(lcwkr, tx) & ((commit_tx(T) & write_tx(T, kr)) -> (le(T, lcwkr) | le(tx, T)));
+
+#    if ((op_writes_key(op, kw) &
+#         (le(tx, luwkw) | le(tx, lurkw))) |
+#        (op_reads_key(op, kr) &
+#         luwkr ~= lcwkr &
+#         le(luwkr, tx)))
+    require (op_writes_key(op, kw) & (le(tx, luwkw) | le(tx, lurkw))) | (op_reads_key(op, kr) & luwkr ~= lcwkr & le(luwkr, tx));
+
+    abort_tx(tx) := true;
+}
+
+action do_progress(tx: transaction, op: operation, n: node, kw: key, kr: key, luwkw: transaction, lurkw: transaction, luwkr: transaction, lcwkr: transaction) = {
+    require op_in_tx(tx, op); # Grab an operation
+    require ~abort_tx(tx) & ~commit_tx(tx); # Ensures that the transaction is not already aborted or committed
+
+    require (oporder(X, op) & X ~= op & op_node(X, N)) -> precommit_tx(tx, N);
+                   # Ensures that the previous operation was successfully precommitted
+    require op_node(op, n) ; # Assume operation is in node n
+    require ~precommit_tx(tx, n);
+    require ~op_writes_key(op, K) | op_writes_key(op, kw);
+    require op_writes_key(op, kw) -> node_for_key(kw, n);
+
+    require ~op_reads_key(op, K) | op_reads_key(op, kr);
+    require op_reads_key(op, kr) -> node_for_key(kr, n);
+
+#    instantiate get_last_write(kw, luwkw); # Write fails because of any future read or write.
+#    instantiate get_last_read (kw, lurkw);
+    require write_tx(luwkw, kw) & (~abort_tx(luwkw)) & (write_tx(T, kw) -> (le(T, luwkw) | abort_tx(T)));
+    require exists HT. depends_tx(lurkw, kw, HT) & (~abort_tx(lurkw)) & (read_tx(T, kw) -> le(T, lurkw) | abort_tx(T));
+
+#    instantiate get_previous_write(kr, luwkr, tx); # Read fails because of uncommited previous reads or writes
+#    instantiate get_previous_committed_write(kr, lcwkr, tx);
+    require write_tx(luwkr, kr) & le(luwkr, tx) & (~abort_tx(luwkr)) & (write_tx(T, kr) -> (le(T, luwkr) | le(tx, T) | abort_tx(T)));
+    require commit_tx(lcwkr) & write_tx(lcwkr, kr) & le(lcwkr, tx) & ((commit_tx(T) & write_tx(T, kr)) -> (le(T, lcwkr) | le(tx, T)));
+
+#    if ((op_writes_key(op, kw) &
+#         (le(tx, luwkw) | le(tx, lurkw))) |
+#        (op_reads_key(op, kr) &
+#         luwkr ~= lcwkr &
+#         le(luwkr, tx)))
+    require ~((op_writes_key(op, kw) & (le(tx, luwkw) | le(tx, lurkw))) | (op_reads_key(op, kr) & luwkr ~= lcwkr & le(luwkr, tx)));
+
+    if (op_writes_key(op, kw)) {
+        write_tx(tx, kw) := true;
+    };
+    if (op_reads_key(op, kr)) {
+        depends_tx(tx, kr, lcwkr) := true;
+        read_tx(tx, kr) := true;
+    };
+    precommit_tx(tx, n) := true;
+    if (forall O. (oporder(op, O) -> O = op)) {
+        commit_tx(tx) := true;
+    };
+} 
+
+export do_progress
+export do_abort
+
+# Safety: Linearizability
+invariant [1000000] (~(TX1 ~= TX2 &
+	    commit_tx(TX1) &
+	    commit_tx(TX2)  &
+	    le(TX1,TX2) & # TX1 was before TX2
+	    write_tx(TX1, K) & # TX1 wrote K
+	    depends_tx(TX2, K, T3) & # TX2 read K
+	    ~le(TX1, T3)))
+        & ((commit_tx(T) & op_in_tx(T, O) & op_node(O, N)) -> precommit_tx(T, N))   # Safety: Atomicity
+

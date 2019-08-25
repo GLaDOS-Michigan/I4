@@ -1,0 +1,10 @@
+5
+3 bool ring.btw N N N
+2 bool le ID ID
+1 ID idn N
+1 bool leader N
+2 bool pending ID N
+
+0
+
+0

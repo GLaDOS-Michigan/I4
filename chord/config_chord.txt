@@ -1,0 +1,15 @@
+9
+3 bool ring.btw NODE NODE NODE
+1 bool a NODE
+2 bool s1 NODE NODE
+1 bool in_s1 NODE
+2 bool s2 NODE NODE
+1 bool in_s2 NODE
+2 bool p NODE NODE
+1 bool reach NODE
+1 bool error NODE
+
+1
+NODE org = 0
+
+0

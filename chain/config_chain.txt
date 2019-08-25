@@ -1,0 +1,18 @@
+13
+2 bool le TR TR
+2 bool op_reads_key OP K
+2 bool op_writes_key OP K
+2 bool op_node OP N
+2 bool node_for_key K N
+2 bool op_in_tx TR OP
+2 bool oporder OP OP
+2 bool precommit_tx TR N
+1 bool abort_tx TR
+1 bool commit_tx TR
+3 bool depends_tx TR K TR
+2 bool read_tx TR K
+2 bool write_tx TR K
+
+0
+
+0

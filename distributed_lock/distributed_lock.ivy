@@ -1,0 +1,85 @@
+#lang ivy1.7
+
+#
+# An Ivy model of the toy lock example from https://github.com/Microsoft/Ironclad/blob/master/ironfleet/src/Dafny/Distributed/Protocol/Lock/Node.i.dfy
+#
+# For a description of the protocol, see the IronFleet paper
+# (https://www.microsoft.com/en-us/research/wp-content/uploads/2015/10/ironfleet.pdf),
+# Figure 4
+#
+
+# A total order helper module
+module total_order(r) = {
+    axiom r(X,X)                        # Reflexivity
+    axiom r(X, Y) & r(Y, Z) -> r(X, Z)  # Transitivity
+    axiom r(X, Y) & r(Y, X) -> X = Y    # Anti-symmetry
+    axiom r(X, Y) | r(Y, X)             # Totality
+}
+
+################################################################################
+#
+# Types, relations and functions describing state of the network
+#
+################################################################################
+
+type node
+type epoch
+
+# epochs are totally ordered with a least element called zero
+relation le(X:epoch, Y:epoch)
+instantiate total_order(le)
+individual zero:epoch
+axiom le(zero, X)
+#individual maxint:epoch
+#axiom le(X, maxint)
+function ep(N:node) : epoch # ep(n) is the current epoch of node n
+
+relation held(N:node) # held(n) is true iff the lock is currently held by node n
+
+# transfer messages
+relation transfer(E:epoch, N:node)  # the node is the message destination
+
+# locked messages
+relation locked(E:epoch, N:node)  # the node is the message source
+
+################################################################################
+#
+# Protocol description
+#
+################################################################################
+individual first:node
+individual e:epoch
+axiom e ~= zero
+#axiom E ~= zero -> le(e, E)
+after init {
+    # initially exactly one node holds the lock, and everyone has epoch zero
+    held(X) := X=first;
+    ep(N) := zero;
+    ep(first) := e;
+    transfer(E, N) := false;
+    locked(E, N) := false;
+}
+
+action grant(n1:node, n2:node, e:epoch) = {
+    # release the lock and send a transfer message
+    require held(n1);
+    require ~le(e, ep(n1));   # jump to some strictly higher epoch
+    transfer(e, n2) := true;
+    held(n1) := false;
+}
+
+action accept(n:node, e:epoch) = {
+    # receive a transfer message and take the lock, sending a locked message
+    require transfer(e,n);
+    if ~le(e, ep(n)) {
+        held(n) := true;
+        ep(n) := e;
+        locked(e, n) := true;
+    };
+}
+
+export grant
+export accept
+
+# the safety property
+invariant [1000000] locked(E, N1) & locked(E, N2) -> N1 = N2

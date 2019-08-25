@@ -1,0 +1,129 @@
+#lang ivy1.7
+
+################################################################################
+#
+# A module for axiomatizing a total order
+#
+################################################################################
+
+module total_order(r) = {
+    axiom r(X,X)                        # Reflexivity
+    axiom r(X, Y) & r(Y, Z) -> r(X, Z)  # Transitivity
+    axiom r(X, Y) & r(Y, X) -> X = Y    # Anti-symmetry
+    axiom r(X, Y) | r(Y, X)             # Totality
+}
+
+
+################################################################################
+#
+# Module describing a ring topology.
+#
+# The module includes an anti-reflexive ternary btw relation.
+#
+# The module also includes get_next and get_prev actions.
+#
+# In this module, the ring topology is arbitrary and fixed.
+#
+################################################################################
+
+module ring_topology(carrier) = {
+
+    relation btw(X:carrier,Y:carrier, Z:carrier) # Y is on the acyclic path from X to Z
+
+    # Axiom defining the btw relation - note it's not reflexive
+    # not needed: axiom btw(X,Y,Z) -> X ~= Y & X ~= Z & Y ~= Z  # anti-reflexive
+    axiom btw(W,X,Y) & btw(W,Y,Z) -> btw(W,X,Z)  # transitive
+    axiom btw(W,X,Y) -> ~btw(W,Y,X)  # acyclic
+    axiom btw(W,X,Y) | btw(W,Y,X) | W=X | W=Y | X=Y  # total
+    axiom btw(X,Y,Z) -> btw(Y,Z,X)  # cyclic permutations
+
+#    action get_next(x:carrier) returns (y:carrier) = {
+#        assume x ~= y & ((Z ~= x & Z ~= y) -> btw(x,y,Z))
+#    }
+
+#    action get_prev(y:carrier) returns (x:carrier) = {
+#        assume y ~= x & ((Z ~= y & Z ~= x) -> btw(y,x,Z))
+#    }
+
+}
+
+
+################################################################################
+#
+# Types, relations and functions describing state of the network
+#
+################################################################################
+
+type node
+type id
+
+# A ring topology of nodes
+instantiate ring : ring_topology(node)
+
+# A total order on ids
+relation le(X:id, Y:id)
+instantiate total_order(le)
+
+# A function relating a node to its id
+function idn(X:node) : id
+axiom idn(X) = idn(Y) -> X = Y  # the idn function is injective
+
+# A relation that keeps track of nodes that think they are the leader
+relation leader(N:node)
+
+# A relation for pending messages, a message is just an id
+relation pending(V:id, N:node) # The identity V is pending at node N
+
+################################################################################
+#
+# Protocol description
+#
+# Two action: send and receive
+#
+################################################################################
+
+after init {
+    leader(N) := false;
+    pending(V,N) := false;
+}
+
+action send(n: node, n1: node) = {
+    # send my own id to the next node
+    require n ~= n1 & ((Z ~= n & Z ~= n1) -> ring.btw(n, n1, Z));
+    pending(idn(n), n1) := true;
+}
+
+action become_leader(n: node) = {
+    require pending(idn(n), n);
+    leader(n) := true;
+}
+
+action receive(n: node, m: id, n1: node) = {
+    require pending(m, n);
+    require n ~= n1 & ((Z ~= n & Z ~= n1) -> ring.btw(n, n1, Z));
+#    require m ~= idn(n);
+    if le(idn(n), m) {
+        pending(m, n1) := true;
+    };
+}
+
+#action receive(n:node, m:id) = {
+#    # receive a message from the right neighbor
+#    assume pending(m, n);
+#    pending(m, n) := *; # abstract the number of pending messages
+#    if m = idn(n) {  # Found a leader
+#        leader(n) := true;
+#    } else {
+#        if le(idn(n), m) { # pass message to next node
+#            var s := ring.get_next(n);
+#            pending(m, s) := true;
+#        } # otherwise drop the message...
+#    }
+#}
+
+export send
+export receive
+export become_leader
+
+# The safety property:
+invariant [1000000] forall X: node, Y:node. leader(X) & leader(Y) -> X = Y  # at most one leader

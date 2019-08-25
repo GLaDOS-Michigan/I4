@@ -1,0 +1,11 @@
+5
+1 EPOCH ep NODE
+1 boolean held NODE
+2 boolean transfer EPOCH NODE
+2 boolean locked EPOCH NODE
+2 boolean le EPOCH EPOCH
+
+1
+EPOCH zero = 0
+
+0
