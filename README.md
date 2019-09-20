@@ -6,6 +6,11 @@ I4 is an automated inductive invariant generator for distributed protocols.
 
 Run script `bash dependencies.sh` to automatically install Ivy and Averroes.
 
+If you want to run Ivy locally, you need to add it to `PYTHONPATH`.
+```
+export PYTHONPATH=/usr/local/lib/python2.7/site-packages:$PYTHONPATH
+```
+
 ## How to run
 1. Start with a protocol, run `translate.py` in python2 to generate a finite instance in vmt format. Specify each sort's amount for the desired model size.  
     ```
