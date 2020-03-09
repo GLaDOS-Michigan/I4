@@ -27,7 +27,7 @@ sudo python setup.py install
 popd
 
 echo "Building AVR"
-git clone https://github.com/MadeByMars/avr.git
+git clone https://github.com/GLaDOS-Michigan/avr.git
 pushd .
 cd avr
 git checkout distributed
