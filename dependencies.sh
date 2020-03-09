@@ -20,7 +20,7 @@ echo "Building Ivy"
 sudo apt-get install python-ply python-pygraphviz
 sudo pip install ply pygraphviz tarjan
 sudo apt-get install python-tk tix
-git clone https://github.com/MadeByMars/ivy.git
+git clone https://github.com/GLaDOS-Michigan/ivy.git
 pushd .
 cd ivy
 sudo python setup.py install
