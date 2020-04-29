@@ -54,8 +54,7 @@ axiom e ~= zero
 after init {
     # initially exactly one node holds the lock, and everyone has epoch zero
     held(X) := X=first;
-    ep(N) := zero;
-    ep(first) := e;
+    ep(N) := e if N = first else zero;
     transfer(E, N) := false;
     locked(E, N) := false;
 }
