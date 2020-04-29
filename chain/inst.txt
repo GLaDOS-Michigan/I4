@@ -1,0 +1,7 @@
+4
+transaction=3
+operation=3
+key=1
+node=2
+
+0
