@@ -42,8 +42,6 @@ def parse_var(st, used, config):
             for k in config.sorts:
                 if ret.startswith(config.sorts[k].lower() + '_'):
                     l = max(l, len(config.sorts[k]))
-            if ret.startswith('Boolean_'):
-                l = max(l, len('Boolean'))
             assert '_' not in ret or l > 0, ret
             ret = ret[l + 1:]
             ret = add_var(ret, used)
@@ -74,7 +72,7 @@ def parse(st, used, config):
             l = l + 1
         else:
             r = l + 1
-            while st[r] not in ['(', ')', '~', ' ']:
+            while r < len(st) and st[r] not in ['(', ')', '~', ' ']:
                 r = r + 1
             ret += parse_var(st[l:r], used, config)
             l = r
@@ -88,6 +86,13 @@ def comp(dic1, dic2):
             if v not in dic2[k]:
                 return False
     return True
+
+def update(dic1, dic2):
+    for k in dic2:
+        if k not in dic1:
+            dic1[k] = dic2[k]
+        else:
+            dic1[k] = list(set(dic1[k] + dic2[k]))
 
 class Config():
     def __init__(self, fi):
@@ -151,8 +156,11 @@ class Invariant():
         for i in range(len(self.invs)):
             prefix = []
             for p in config.prefix:
-                if comp(config.prefix[p], self.vars[i]):
-                    prefix.append(p)
+                prefix.append(p)
+                if '(' not in p:
+                    update(self.vars[i], config.prefix[p])
+#                if comp(config.prefix[p], self.vars[i]):
+#                    prefix.append(p)
             for t in self.vars[i]:
                 for l in range(1, len(self.vars[i][t])):
                     for r in range(l):
@@ -184,6 +192,7 @@ class Invariant():
             self.vars.append(var)
 
     def check_symmetry(self, result, var):
+        return True
         rep = [result]
         for typ in var:
             l = len(var[typ])
@@ -199,7 +208,7 @@ class Invariant():
                 newl.extend(tmp)
             rep = newl
 #        print '\n'.join(rep)
-        assert len(set(rep)) == len(rep)
+#        assert len(set(rep)) == len(rep)
         for s in rep:
             if s in self.symmetry:
                 return False

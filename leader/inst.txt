@@ -1,5 +1,8 @@
 2
 node=3
-id=4
+id=3
 
-0
+3
+node0_idn=id0
+node1_idn=id1
+node2_idn=id2
