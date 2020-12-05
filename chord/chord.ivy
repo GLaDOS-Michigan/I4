@@ -171,4 +171,4 @@ export remove_org
 export fail
 export test
 
-invariant ~error(N)
+invariant [1000000] ~error(N)
