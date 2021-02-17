@@ -375,6 +375,7 @@ bool verify() {
     char st[100000];
     int line, id;
     bool flag = false;
+    bool succeed = false;
     char str[100000];
     memset(v, 0, sizeof(v));
     while (fgets(st, 100000, in)) {
@@ -391,9 +392,12 @@ bool verify() {
             }
             flag = true;
         }
+        if (strcmp(st, "OK\n") == 0) {
+            succeed = true;
+        }
     }
     fclose(in);
-    if (!flag) fprintf(stderr, "succeed!\n");
+    if (!flag) fprintf(stderr, succeed ? "succeed!\n" : "error!\n");
     return flag;
 }
 int main(int argc, char *argv[]) {
