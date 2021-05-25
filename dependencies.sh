@@ -34,5 +34,6 @@ git checkout distributed
 sudo apt-get install clang
 sudo apt-get install tcl8.6-dev
 sudo apt-get install libreadline-dev
+sudo apt-get install flex bison
 bash build.sh
 popd

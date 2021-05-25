@@ -18,7 +18,7 @@ if __name__ == '__main__':
         if flag:
             if len(i) >= 11 and i[:11] == 'Assumptions':
                 exit()
-            if 'fml' not in i and 'loc' not in i and '[1]' not in i:
+            if 'fml_' not in i and 'loc_' not in i and '[1]' not in i:
                 print i,
         if len(i) >= 9 and i[:9] == 'Inductive':
             flag = True

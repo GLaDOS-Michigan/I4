@@ -412,6 +412,10 @@ def instantiate_conditionalexp(x, dic):
     assert isinstance(x, conditionalexp)
     return '(ite (= %s bv_true) (ite (= %s %s) bv_true bv_false) (ite (= %s %s) bv_true bv_false))' % (astdict[type(x.args[0])](x.args[0], dic), astdict[type(x.args[1])](x.args[1], dic), astdict[type(x.args[2])](x.args[2], dic), astdict[type(x.args[1])](x.args[1], dic), astdict[type(x.args[3])](x.args[3], dic))
 
+def instantiate_Ite(x, dic):
+    assert isinstance(x, ivy_ast.Ite)
+    return '(ite (= %s bv_true) %s %s)' % (astdict[type(x.args[0])](x.args[0], dic), astdict[type(x.args[1])](x.args[1], dic), astdict[type(x.args[2])](x.args[2], dic))
+
 astdict = dict()
 #astdict[ivy_ast.ActionDecl] = f_ActionDecl
 astdict[ivy_ast.And] = instantiate_And
@@ -423,6 +427,7 @@ astdict[ivy_ast.Atom] = instantiate_Atom
 astdict[ivy_ast.Implies] = instantiate_Implies
 astdict[ivy_ast.Exists] = instantiate_Exists
 astdict[ivy_ast.Forall] = instantiate_Forall
+astdict[ivy_ast.Ite] = instantiate_Ite
 astdict[act.AssignAction] = instantiate_Assign
 astdict[conditionalexp] = instantiate_conditionalexp
 

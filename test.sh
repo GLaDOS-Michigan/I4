@@ -42,7 +42,7 @@ cd avr
 python avr.py --vmt ../tmp.vmt -e 4
 popd
 python remove.py avr/output/work_test/inv.txt > inv.txt
-time ./main distributed_lock/distributed_lock inv.txt distributed_lock/config_distributed_toy.txt
+time ./main distributed_lock/distributed_lock inv.txt distributed_lock/config_distributed_lock.txt
 echo 'distributed lock done!'
 echo ''
 
